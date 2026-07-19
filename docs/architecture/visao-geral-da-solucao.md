@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Descrever a arquitetura proposta para a primeira versão do `Projeto Lago Verde`, alinhada à decisão de conduzir uma `PoC` com `Django + Wagtail + PostgreSQL`.
+Descrever a arquitetura proposta para a primeira versão do `Projeto Lago Verde`, alinhada à decisão de conduzir uma `PoC` com `Django + Wagtail + PostgreSQL` e compatível com o modelo operacional da infraestrutura da Maadix.
 
 ## Arquitetura proposta
 
@@ -24,7 +24,8 @@ Isso significa que os seguintes elementos viverão dentro da mesma aplicação p
 - `CMS e painel administrativo`: Wagtail
 - `Banco de dados`: PostgreSQL
 - `Frontend`: Django Templates + Tailwind CSS + HTMX
-- `Servidor web / proxy reverso`: Nginx
+- `Servidor de aplicação`: Gunicorn
+- `Publicação / proxy reverso`: Apache da Maadix com `VirtualHost` dedicado
 - `Empacotamento e deploy`: Docker + Docker Compose
 - `Sistema operacional alvo`: Linux
 
@@ -50,6 +51,7 @@ Essa abordagem reduz:
 ### Camada de apresentação
 
 - `home` pública;
+- página de login pública;
 - páginas privadas autenticadas;
 - listagem de itens;
 - páginas individuais de item;
@@ -61,7 +63,7 @@ Essa abordagem reduz:
 
 - gestão de usuários e perfis;
 - controle de acesso;
-- possível expiração de usuários convidados;
+- expiração de usuários convidados;
 - modelagem do catálogo;
 - filtros e taxonomias;
 - publicação e edição de conteúdo.
@@ -70,20 +72,89 @@ Essa abordagem reduz:
 
 - banco relacional `PostgreSQL`;
 - arquivos de mídia armazenados em volume persistente;
-- possibilidade de uso futuro de `Redis`, caso seja necessário.
+- possibilidade de uso futuro de `Redis` e `Celery`, caso surja necessidade operacional real.
+
+## Estratégia de ambientes
+
+### Desenvolvimento local
+
+- execução local pelos desenvolvedores;
+- uso de `Docker Compose`;
+- banco local dedicado ao ambiente de desenvolvimento;
+- sem dependência de acesso contínuo ao servidor para o dia a dia de implementação.
+
+### Homologação / staging
+
+- VM Linux dedicada;
+- ambiente isolado dos demais serviços da Maadix;
+- stack equivalente à de produção;
+- usada para validação da PoC, testes de integração e homologação com stakeholders.
+
+### Produção
+
+- VM Linux dedicada;
+- isolamento em relação aos demais serviços existentes;
+- banco, rede e volumes próprios;
+- publicação via `Apache / VirtualHost` da Maadix.
 
 ## Infraestrutura alvo
 
 A primeira versão deve considerar operação em `infra própria` com:
 
-- servidor Linux;
+- servidor Linux dedicado por ambiente remoto;
 - Docker;
 - Docker Compose;
-- Nginx;
-- PostgreSQL;
+- Apache na camada de publicação da Maadix;
+- PostgreSQL dedicado;
 - backup de banco e arquivos;
 - HTTPS;
-- monitoramento e logs.
+- monitoramento e logs;
+- acesso operacional restrito.
+
+## Publicação, domínio e controle de acesso
+
+### Publicação e domínio
+
+- o domínio ou subdomínio do portal será publicado pela infraestrutura da Maadix;
+- o `Apache` será responsável por `VirtualHost`, `SSL/TLS`, redirecionamento para HTTPS e proxy reverso;
+- a aplicação será entregue containerizada para encaixe no fluxo operacional definido com a infraestrutura.
+
+### Controle de acesso
+
+- apenas a `home` e a página de `login` permanecerão públicas;
+- as demais páginas do portal exigirão autenticação;
+- o controle de acesso não ficará no Apache;
+- a aplicação `Django + Wagtail` será responsável por autenticação, autorização, sessões, perfis e validade de acesso;
+- o suporte será responsável por prover credenciais aos usuários.
+
+## Serviços previstos na fase inicial
+
+- `app`: Django + Wagtail + Gunicorn
+- `db`: PostgreSQL
+- `proxy externo`: Apache da Maadix
+
+Não estão previstos na fase inicial:
+
+- `Redis`
+- `Celery`
+
+## Fluxo de deploy
+
+### Fase inicial
+
+- desenvolvimento local;
+- versionamento em `Git`;
+- publicação em `staging`;
+- validação interna e com stakeholders;
+- publicação em `produção` após aprovação.
+
+### Premissas operacionais
+
+- a aplicação será entregue com `Dockerfile` e `Docker Compose`;
+- o deploy deve ser rastreável a partir do repositório;
+- o acesso ao servidor deve ser mínimo e controlado;
+- operações esperadas em produção: deploy, migrations, leitura de logs, reinício de containers e troubleshooting pontual;
+- desenvolvimento cotidiano não deve acontecer diretamente nos servidores remotos.
 
 ## Integrações possíveis
 
@@ -96,6 +167,8 @@ A primeira versão deve considerar operação em `infra própria` com:
 - priorizar arquitetura simples;
 - evitar frontend desacoplado nesta etapa;
 - evitar microserviços;
+- manter o serviço isolado dos demais componentes da Maadix;
+- usar publicação por `Apache / VirtualHost`, sem alterar estruturalmente a plataforma atual;
 - introduzir `Redis` e `Celery` apenas se houver necessidade real.
 
 ## Referências relacionadas

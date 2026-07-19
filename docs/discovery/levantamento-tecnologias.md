@@ -1,9 +1,9 @@
 # Levantamento de Tecnologias
 
-- `Data`: 13/07/2026
+- `Data`: 19/07/2026
 - `Responsável`: Lucas de Andrade - Engenheiro de Software
 - `Status`: Em análise
-- `Escopo`: avaliação inicial da stack para a PoC e para a primeira fase do Projeto Lago Verde
+- `Escopo`: avaliação inicial da stack para a PoC e para a primeira fase do Projeto Lago Verde, considerando as premissas operacionais da infraestrutura Maadix
 
 ## Objetivo
 
@@ -42,8 +42,9 @@ Esse contexto exige equilíbrio entre:
 - `CMS`: Wagtail
 - `Banco de dados`: PostgreSQL
 - `Frontend`: Django Templates + Tailwind CSS + HTMX
+- `Servidor de aplicação`: Gunicorn
 - `Infraestrutura`: Linux + Docker + Docker Compose
-- `Servidor web / proxy reverso`: Nginx
+- `Publicação / proxy reverso`: Apache da Maadix com `VirtualHost` dedicado
 
 ## Ferramentas de apoio
 
@@ -56,8 +57,65 @@ Esse contexto exige equilíbrio entre:
 - `Wagtail` complementa o Django com um CMS amigável, permitindo que usuários não técnicos gerenciem conteúdo do catálogo, páginas e artigos com mais autonomia.
 - `PostgreSQL` é um banco relacional estável e adequado para dados estruturados, como itens do catálogo, categorias, usuários, perfis e permissões.
 - `Django Templates + Tailwind + HTMX` permitem construir uma interface responsiva, moderna e com boa usabilidade, sem exigir a complexidade de um frontend separado.
+- `Gunicorn` é um servidor de aplicação simples e adequado para publicar o monólito Django/Wagtail dentro dos containers.
 - `Linux + Docker` facilitam a padronização do ambiente, o deploy em infraestrutura própria e a manutenção do sistema.
-- `Nginx` pode atuar como proxy reverso, aplicar HTTPS, servir arquivos estáticos e encaminhar requisições para a aplicação Django de forma segura e previsível.
+- `Apache` já faz parte do modelo operacional informado pela infraestrutura da Maadix e pode publicar o novo portal por `VirtualHost`, sem exigir alteração estrutural no ecossistema atual.
+
+## Premissas de infraestrutura da Maadix
+
+Com base no feedback recebido da equipe de infraestrutura, a proposta passa a considerar as seguintes premissas:
+
+- a aplicação poderá ser hospedada na infraestrutura atual da Maadix, desde que permaneça isolada dos demais serviços;
+- o portal deverá operar em ambiente Docker próprio;
+- o banco de dados será dedicado ao projeto;
+- rede e volumes serão independentes;
+- a arquitetura atual da Maadix não deve sofrer alterações estruturais por causa do novo portal;
+- a publicação será feita por `VirtualHost` próprio no `Apache`, em linha com o modelo já utilizado para outros serviços;
+- o novo serviço será tratado como aplicação customizada, com rotina operacional própria de deploy, atualização, backup e manutenção.
+
+## Estratégia de ambientes
+
+- `desenvolvimento`: execução local pelos desenvolvedores, usando `Docker Compose`;
+- `homologação / staging`: VM Linux dedicada para validação da PoC, testes de integração e homologação com stakeholders;
+- `produção`: VM Linux dedicada, isolada dos demais serviços e separada do ambiente de homologação.
+
+Essa abordagem reduz risco operacional e facilita a validação do mesmo desenho técnico antes da entrada em produção.
+
+## Publicação, domínio e controle de acesso
+
+- o domínio ou subdomínio do portal será publicado pela infraestrutura da Maadix;
+- o `Apache` será responsável por `VirtualHost`, `HTTPS` e proxy reverso;
+- a aplicação `Django + Wagtail` será responsável por autenticação, autorização, sessão e controle de acesso às páginas privadas;
+- a `home` permanecerá pública;
+- as demais áreas do portal exigirão login e senha;
+- o suporte será responsável por prover credenciais aos usuários;
+- a aplicação deverá suportar perfis e validade de acesso, conforme os requisitos do projeto.
+
+## Serviços previstos na fase inicial
+
+### Obrigatórios
+
+- `Django + Wagtail`
+- `PostgreSQL`
+- `Gunicorn`
+- `Docker / Docker Compose`
+
+### Não previstos na fase inicial
+
+- `Redis`
+- `Celery`
+
+Esses componentes podem ser adicionados depois, caso surja necessidade real de cache compartilhado, filas, tarefas assíncronas ou processamento adicional.
+
+## Fluxo de deploy resumido
+
+- desenvolvimento local com `Docker`;
+- versionamento do código em `Git`;
+- publicação em `staging` para validação técnica e funcional;
+- aprovação da PoC e, depois, do MVP;
+- publicação em `produção` com o mesmo desenho de containerização.
+
+Na fase inicial, a recomendação é trabalhar com deploy controlado a partir do repositório, priorizando rastreabilidade e simplicidade operacional.
 
 ## Alternativas consideradas
 
@@ -122,18 +180,18 @@ Esse contexto exige equilíbrio entre:
 
 ## Painel comparativo
 
-| Critério                        | WordPress  | Django + Wagtail |
-| ------------------------------- | ---------- | ---------------- |
-| Facilidade inicial              | Muito alta | Alta             |
-| Velocidade para MVP             | Muito alta | Alta             |
-| Facilidade para conteudistas    | Muito alta | Alta             |
-| Regras de negócio específicas   | Média      | Alta             |
-| Catálogo estruturado            | Média      | Alta             |
-| Controle de acesso              | Média      | Alta             |
-| Dependência de plugins          | Alta       | Baixa            |
-| Manutenção no longo prazo       | Média      | Alta             |
-| Flexibilidade para crescer      | Média      | Alta             |
-| Aderência ao Projeto Lago Verde | Boa        | Muito boa        |
+| Critério | WordPress | Django + Wagtail |
+|---|---|---|
+| Facilidade inicial | Muito alta | Alta |
+| Velocidade para MVP | Muito alta | Alta |
+| Facilidade para conteudistas | Muito alta | Alta |
+| Regras de negócio específicas | Média | Alta |
+| Catálogo estruturado | Média | Alta |
+| Controle de acesso | Média | Alta |
+| Dependência de plugins | Alta | Baixa |
+| Manutenção no longo prazo | Média | Alta |
+| Flexibilidade para crescer | Média | Alta |
+| Aderência ao Projeto Lago Verde | Boa | Muito boa |
 
 ### Leitura do comparativo
 
@@ -143,13 +201,13 @@ Esse contexto exige equilíbrio entre:
 
 ## Painel comparativo ampliado
 
-| Stack                           | Aderência ao projeto | Pontos fortes                                                                                                               | Riscos / quando perde                                                                                                                                      | Complexidade operacional |
-| ------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| `WordPress clássico`            | Boa para MVP rápido  | CMS maduro, fácil para conteudista, deploy simples, ecossistema grande                                                      | Expiração de acesso por prazo controlado pelo suporte, filtros mais ricos, modelagem do catálogo e regras finas tendem a virar plugin + código customizado | Baixa                    |
-| `WordPress headless + Next.js`  | Média                | Front muito forte, bom SEO/performance, mantém WordPress para conteúdo                                                      | Complexidade de `2 sistemas`; para este projeto parece custo extra sem ganho proporcional                                                                  | Média/alta               |
-| `Strapi + Next.js + PostgreSQL` | Boa                  | Modelagem estruturada, RBAC, API limpa, bom para catálogo relacional                                                        | Mais `moving parts`, mais DevOps, frontend obrigatório separado, pode ser mais do que o projeto precisa no início                                          | Alta                     |
-| `NestJS + Next.js + PostgreSQL` | Média/boa            | Alto controle técnico, forte padronização em `TypeScript`, boa base para regras de negócio                                  | Exige construir ou integrar CMS/admin; sobe escopo, prazo e custo inicial                                                                                  | Alta                     |
-| `Django + Wagtail + PostgreSQL` | Muito boa            | Monólito forte, autenticação e expiração mais fáceis de controlar, bom CMS, busca e modelagem mais coerentes no longo prazo | Sobe um pouco o custo inicial de desenvolvimento e exige equipe confortável com Python                                                                     | Média                    |
+| Stack | Aderência ao projeto | Pontos fortes | Riscos / quando perde | Complexidade operacional |
+|---|---|---|---|---|
+| `WordPress clássico` | Boa para MVP rápido | CMS maduro, fácil para conteudista, deploy simples, ecossistema grande | Expiração de acesso por prazo controlado pelo suporte, filtros mais ricos, modelagem do catálogo e regras finas tendem a virar plugin + código customizado | Baixa |
+| `WordPress headless + Next.js` | Média | Front muito forte, bom SEO/performance, mantém WordPress para conteúdo | Complexidade de `2 sistemas`; para este projeto parece custo extra sem ganho proporcional | Média/alta |
+| `Strapi + Next.js + PostgreSQL` | Boa | Modelagem estruturada, RBAC, API limpa, bom para catálogo relacional | Mais `moving parts`, mais DevOps, frontend obrigatório separado, pode ser mais do que o projeto precisa no início | Alta |
+| `NestJS + Next.js + PostgreSQL` | Média/boa | Alto controle técnico, forte padronização em `TypeScript`, boa base para regras de negócio | Exige construir ou integrar CMS/admin; sobe escopo, prazo e custo inicial | Alta |
+| `Django + Wagtail + PostgreSQL` | Muito boa | Monólito forte, autenticação e expiração mais fáceis de controlar, bom CMS, busca e modelagem mais coerentes no longo prazo | Sobe um pouco o custo inicial de desenvolvimento e exige equipe confortável com Python | Média |
 
 ### Leitura do painel ampliado
 
@@ -170,7 +228,7 @@ Esse contexto exige equilíbrio entre:
 
 A stack recomendada para a `PoC` e para a primeira fase do projeto é:
 
-`Python + Django + Wagtail + PostgreSQL + Tailwind + HTMX + Linux + Docker`
+`Python + Django + Wagtail + PostgreSQL + Gunicorn + Tailwind + HTMX + Linux + Docker`, com publicação via `Apache / VirtualHost` da Maadix
 
 Ela oferece um bom equilíbrio entre:
 

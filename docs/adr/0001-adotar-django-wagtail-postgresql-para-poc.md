@@ -1,7 +1,7 @@
 # ADR-0001: Adotar Django + Wagtail + PostgreSQL como stack candidata para a PoC do Projeto Lago Verde
 
 - `Status`: Proposto
-- `Data`: 2026-07-13
+- `Data`: 2026-07-19
 - `Decisores`: Equipe técnica do Projeto Lago Verde
 - `Impacta`: arquitetura da aplicação, CMS, modelagem de conteúdo, autenticação, deploy e operação em infraestrutura própria
 
@@ -33,6 +33,8 @@ Também foi observado que a solução precisa equilibrar:
 - simplicidade de operação em ambiente `on-premise`;
 - base técnica sustentável para evoluções futuras.
 
+Após o retorno da infraestrutura da Maadix, ficou claro que o principal ponto de atenção não está na capacidade inicial do ambiente, mas sim no desenho da operação do novo serviço dentro da infraestrutura existente.
+
 ## Decisão
 
 Será conduzida uma `PoC (Prova de Conceito)` usando a stack:
@@ -42,7 +44,10 @@ Será conduzida uma `PoC (Prova de Conceito)` usando a stack:
 - `PostgreSQL` como banco de dados relacional;
 - frontend renderizado no próprio backend, com `templates server-side`;
 - abordagem inicial de aplicação `monolítica`;
-- empacotamento e deploy com `Docker` e `Docker Compose`.
+- empacotamento e deploy com `Docker` e `Docker Compose`;
+- publicação via `Apache / VirtualHost` da infraestrutura da Maadix;
+- isolamento do serviço em relação aos demais componentes já existentes no ambiente;
+- ausência inicial de `Redis` e `Celery`, salvo necessidade validada posteriormente.
 
 Para a PoC, a implementação deve priorizar:
 
@@ -96,6 +101,16 @@ O catálogo proposto possui natureza relacional e tende a exigir boa modelagem d
 ### 5. A abordagem monolítica simplifica a operação inicial
 
 Como o projeto será operado em `infraestrutura própria`, a adoção de um `monólito` reduz a complexidade operacional inicial em comparação com arquiteturas distribuídas ou `headless` com múltiplos serviços independentes.
+
+### 6. O retorno da infraestrutura da Maadix validou a viabilidade do desenho proposto
+
+O feedback recebido da infraestrutura indicou que:
+
+- não há impedimento inicial de capacidade para hospedar o novo serviço;
+- o principal cuidado está no desenho da operação;
+- a aplicação deve permanecer isolada dos demais serviços existentes;
+- a publicação pode ser feita por `VirtualHost` dedicado no `Apache`;
+- a solução deve entrar como aplicação customizada, com fluxo próprio de deploy, manutenção, backup e monitoramento.
 
 ## Alternativas consideradas
 
@@ -178,6 +193,8 @@ Foi considerada forte do ponto de vista de backend de aplicação, mas inadequad
 
 - será necessário planejar deploy em `infra própria`;
 - será necessário preparar ambiente com `Docker`, aplicação, banco e backup;
+- será necessário alinhar homologação e produção em ambientes separados dos demais serviços;
+- a publicação dependerá de integração com o `Apache` da Maadix;
 - a equipe deverá definir política de autenticação, gestão de usuários e rotina de manutenção.
 
 ## Critérios de sucesso da PoC
@@ -197,13 +214,13 @@ A PoC será considerada bem-sucedida se demonstrar, com clareza:
 - O `Nextcloud` será usado apenas para documentos complementares ou também para identidade/SSO?
 - O controle de expiração de acesso será automático desde a primeira versão?
 - Haverá fluxo editorial com revisão/aprovação ou publicação direta por conteudistas?
-- Quais limitações reais existem na infraestrutura própria do cliente?
+- Qual será o domínio ou subdomínio oficial do portal em cada ambiente?
 
 ## Próximos passos
 
 1. Validar este ADR com a equipe técnica e stakeholders.
 2. Confirmar o escopo da PoC.
-3. Levantar restrições concretas de infraestrutura do cliente.
+3. Confirmar o desenho de ambientes com a infraestrutura da Maadix.
 4. Implementar a PoC com foco no fluxo principal do sistema.
 5. Revisar este ADR após a PoC, alterando o status para `Aceito`, `Substituído` ou `Descartado`.
 
